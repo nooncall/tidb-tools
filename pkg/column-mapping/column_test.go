@@ -30,7 +30,20 @@ type testColumnMappingSuit struct{}
 
 func (t *testColumnMappingSuit) TestRule(c *C) {
 	// test invalid rules
-	inValidRule := &Rule{"test*", "abc*", "id", "id", "Error", nil, "xxx"}
+	inValidRule := &Rule{
+		PatternSchema:    "test*",
+		PatternTable:     "abc*",
+		SourceColumn:     "id",
+		TargetColumn:     "id",
+		Expression:       "Error",
+		Arguments:        nil,
+		CreateTableQuery: "xxx",
+		WasmModule:       "",
+		wasmInstance:     nil,
+		wasmCtx:          nil,
+		wasmHandler:      nil,
+		wasmCtxID:        0,
+	}
 	c.Assert(inValidRule.Valid(), NotNil)
 
 	inValidRule.TargetColumn = ""
@@ -52,7 +65,8 @@ func (t *testColumnMappingSuit) TestRule(c *C) {
 
 func (t *testColumnMappingSuit) TestHandle(c *C) {
 	rules := []*Rule{
-		{"Test*", "xxx*", "", "id", AddPrefix, []string{"instance_id:"}, "xx"},
+
+		{PatternSchema: "Test*", PatternTable: "xxx*", SourceColumn: "", TargetColumn: "id", Expression: AddPrefix, Arguments: []string{"instance_id:"}, CreateTableQuery: "xx"},
 	}
 
 	// initial column mapping
@@ -90,7 +104,7 @@ func (t *testColumnMappingSuit) TestHandle(c *C) {
 func (t *testColumnMappingSuit) TestQueryColumnInfo(c *C) {
 	SetPartitionRule(4, 7, 8)
 	rules := []*Rule{
-		{"test*", "xxx*", "", "id", PartitionID, []string{"8", "test_", "xxx_"}, "xx"},
+		{PatternSchema: "test*", PatternTable: "xxx*", SourceColumn: "", TargetColumn: "id", Expression: PartitionID, Arguments: []string{"8", "test_", "xxx_"}, CreateTableQuery: "xx"},
 	}
 
 	// initial column mapping
@@ -267,7 +281,7 @@ func (t *testColumnMappingSuit) TestPartitionID(c *C) {
 func (t *testColumnMappingSuit) TestCaseSensitive(c *C) {
 	// we test case insensitive in TestHandle
 	rules := []*Rule{
-		{"Test*", "xxx*", "", "id", AddPrefix, []string{"instance_id:"}, "xx"},
+		{PatternSchema: "Test*", PatternTable: "xxx*", SourceColumn: "", TargetColumn: "id", Expression: AddPrefix, Arguments: []string{"instance_id:"}, CreateTableQuery: "xx"},
 	}
 
 	// case sensitive
