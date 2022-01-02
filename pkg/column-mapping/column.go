@@ -15,12 +15,18 @@ package column
 
 import (
 	"fmt"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pingcap/errors"
 	selector "github.com/pingcap/tidb-tools/pkg/table-rule-selector"
+	"github.com/pingcap/tidb-tools/pkg/wasm/common"
+	v1 "github.com/pingcap/tidb-tools/pkg/wasm/v1"
+	"github.com/pingcap/tidb-tools/pkg/wasm/wasmer"
 )
 
 var (
@@ -49,10 +55,16 @@ const (
 	PartitionID Expr = "partition id"
 )
 
+const (
+	WasmRootContextID int32 = 1
+)
+
+type ExprFunc func(*mappingInfo, []interface{}) ([]interface{}, error)
+
 // Exprs is some built-in expression for column mapping
 // only supports some poor expressions now,
 // we would unify tableInfo later and support more
-var Exprs = map[Expr]func(*mappingInfo, []interface{}) ([]interface{}, error){
+var Exprs = map[Expr]ExprFunc{
 	AddPrefix: addPrefix, // arguments contains prefix
 	AddSuffix: addSuffix, // arguments contains suffix
 	// arguments contains [instance_id, prefix of schema, prefix of table]
@@ -82,6 +94,13 @@ type Rule struct {
 	Expression       Expr     `yaml:"expression" json:"expression" toml:"expression"`
 	Arguments        []string `yaml:"arguments" json:"arguments" toml:"arguments"`
 	CreateTableQuery string   `yaml:"create-table-query" json:"create-table-query" toml:"create-table-query"`
+
+	WasmModule string `yaml:"wasm-module" json:"wasm-module" toml:"wasm-module"`
+
+	wasmInstance common.WasmInstance
+	wasmCtx      v1.ContextHandler
+	wasmHandler  *ColumnMappingImportsHandler
+	wasmCtxID    int32
 }
 
 // ToLower covert schema/table parttern to lower case
@@ -117,7 +136,75 @@ func (r *Rule) Valid() error {
 		}
 	}
 
+	if r.WasmModule != "" {
+		if err := r.initWasm(); err != nil {
+			return errors.Annotate(err, "init waasm module error")
+		}
+	}
+
 	return nil
+}
+
+func (r *Rule) initWasm() error {
+	dir, _ := os.Getwd()
+	p := path.Join(dir, r.WasmModule)
+	instance := wasmer.NewWasmerInstanceFromFile(p)
+	v1.RegisterImports(instance)
+	if err := instance.Start(); err != nil {
+		return err
+	}
+
+	r.wasmInstance = instance
+	handler := NewColumnMappingImportsHandler()
+	ctx := &v1.ABIContext{
+		Imports:  handler,
+		Instance: r.wasmInstance,
+	}
+	r.wasmCtx = ctx
+	r.wasmHandler = handler
+
+	var once sync.Once
+
+	var err error
+	once.Do(func() {
+		err = ctx.GetExports().ProxyOnContextCreate(WasmRootContextID, 0)
+	})
+	if err != nil {
+		return errors.Annotate(err, "init rootContextID error")
+	}
+	r.wasmCtxID = WasmRootContextID + 1
+
+	return nil
+}
+
+func (r *Rule) wasmHandle(info *mappingInfo, vals []interface{}) ([]interface{}, error) {
+	ctx := r.wasmCtx
+	ctxID := r.nextWasmCtxID()
+	// create wasm-side context id for current http req
+	err := ctx.GetExports().ProxyOnContextCreate(ctxID, WasmRootContextID)
+	fmt.Printf("[rule] ProxyOnContextCreate, id: %d, err: %v\n", ctxID, err)
+	if err != nil {
+		return nil, errors.Annotatef(err, "ProxyOnContextCreate error, vals: %+v", vals)
+	}
+
+	// 先把map中的上一次的值清掉, 并写入当前值
+	r.wasmHandler.ClearAndSet(vals)
+
+	// 通知wasm module处理数据
+	action, err := ctx.GetExports().ProxyOnRequestHeaders(ctxID, int32(len(vals)), 1)
+	fmt.Printf("[rule] ProxyOnContextCreate, id: %d, action: %v, err: %v\n", ctxID, action, err)
+	if err != nil {
+		return nil, errors.Annotatef(err, "ProxyOnRequestHeaders error, vals: %+v", vals)
+	}
+
+	// 从wasm中获取处理后的值
+	// 注意目前还未处理类型反向转换, 全部返回string
+	newVals := r.wasmHandler.GetVals()
+	return newVals, nil
+}
+
+func (r *Rule) nextWasmCtxID() int32 {
+	return atomic.AddInt32(&r.wasmCtxID, 1)
 }
 
 // Adjust normalizes the rule into an easier-to-process form, e.g. filling in
@@ -258,7 +345,7 @@ func (m *Mapping) HandleRowValue(schema, table string, columns []string, vals []
 		return vals, nil, nil
 	}
 
-	exp, ok := Exprs[info.rule.Expression]
+	exp, ok := m.getExprFunc(info.rule)
 	if !ok {
 		return nil, nil, errors.NotFoundf("column mapping expression %s", info.rule.Expression)
 	}
@@ -269,6 +356,14 @@ func (m *Mapping) HandleRowValue(schema, table string, columns []string, vals []
 	}
 
 	return vals, []int{info.sourcePosition, info.targetPosition}, nil
+}
+
+func (m *Mapping) getExprFunc(rule *Rule) (ExprFunc, bool) {
+	if rule.wasmInstance != nil {
+		return rule.wasmHandle, true
+	}
+	exprFunc, ok := Exprs[rule.Expression]
+	return exprFunc, ok
 }
 
 // HandleDDL handles ddl

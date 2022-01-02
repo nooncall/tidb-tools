@@ -296,3 +296,42 @@ func (t *testColumnMappingSuit) TestCaseSensitive(c *C) {
 	c.Assert(vals, DeepEquals, []interface{}{1, "1"})
 	c.Assert(poss, IsNil)
 }
+
+// 使用wasm实现添加前缀的expr
+func (t *testColumnMappingSuit) TestHandleWasm(c *C) {
+	rules := []*Rule{
+
+		{PatternSchema: "Test*", PatternTable: "xxx*", SourceColumn: "", TargetColumn: "id", Expression: AddPrefix, Arguments: []string{"instance_id:"}, CreateTableQuery: "xx", WasmModule: "add_prefix.wasm"},
+	}
+
+	// initial column mapping
+	m, err := NewMapping(false, rules)
+	c.Assert(err, IsNil)
+	c.Assert(m.cache.infos, HasLen, 0)
+
+	// test add prefix, add suffix is similar
+	vals, poss, err := m.HandleRowValue("test", "xxx", []string{"age", "id"}, []interface{}{1, "1"})
+	c.Assert(err, IsNil)
+	c.Assert(vals, DeepEquals, []interface{}{1, "instance_id:1"})
+	c.Assert(poss, DeepEquals, []int{-1, 1})
+
+	//// test cache
+	//vals, poss, err = m.HandleRowValue("test", "xxx", []string{"name"}, []interface{}{1, "1"})
+	//c.Assert(err, IsNil)
+	//c.Assert(vals, DeepEquals, []interface{}{1, "instance_id:1"})
+	//c.Assert(poss, DeepEquals, []int{-1, 1})
+
+	// test resetCache
+	//m.resetCache()
+	//_, _, err = m.HandleRowValue("test", "xxx", []string{"name"}, []interface{}{"1"})
+	//c.Assert(err, NotNil)
+	//
+	//// test DDL
+	//_, poss, err = m.HandleDDL("test", "xxx", []string{"id", "age"}, "create table xxx")
+	//c.Assert(err, NotNil)
+	//
+	//statement, poss, err := m.HandleDDL("abc", "xxx", []string{"id", "age"}, "create table xxx")
+	//c.Assert(err, IsNil)
+	//c.Assert(statement, Equals, "create table xxx")
+	//c.Assert(poss, IsNil)
+}
