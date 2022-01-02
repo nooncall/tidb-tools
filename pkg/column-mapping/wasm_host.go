@@ -44,14 +44,64 @@ func (h *ColumnMappingImportsHandler) ClearAndSet(vals []interface{}) {
 	h.currentVals = vals
 }
 
-// TODO: 需要做类型转换, 使用h.currentVals
-func (h *ColumnMappingImportsHandler) GetVals() []interface{} {
+func (h *ColumnMappingImportsHandler) GetVals() ([]interface{}, error) {
 	kv := buildKeyValues(h.ValMap)
 	var rets []interface{}
-	for _, v := range kv.ToValues() {
-		rets = append(rets, v)
+	for idx, v := range kv.ToValues() {
+		vi, err := buildNewInterfaceValue(h.currentVals[idx], v)
+		if err != nil {
+			// 这里不返回错误了, 直接返回原值, 先保证能兼容用
+			rets = append(rets, h.currentVals[idx])
+			continue
+		}
+		rets = append(rets, vi)
 	}
-	return rets
+	return rets, nil
+}
+
+func buildNewInterfaceValue(originValue interface{}, newValueStr string) (interface{}, error) {
+	switch originValue.(type) {
+	case int:
+		ret, err := strconv.ParseInt(newValueStr, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return int(ret), nil
+	case uint:
+		ret, err := strconv.ParseInt(newValueStr, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return uint(ret), nil
+	case int32:
+		ret, err := strconv.ParseInt(newValueStr, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return int32(ret), nil
+	case uint32:
+		ret, err := strconv.ParseInt(newValueStr, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return uint32(ret), nil
+	case int64:
+		ret, err := strconv.ParseInt(newValueStr, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return int64(ret), nil
+	case uint64:
+		ret, err := strconv.ParseInt(newValueStr, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return uint64(ret), nil
+	case string:
+		return newValueStr, nil
+	default:
+		return nil, fmt.Errorf("type not support: %T", originValue)
+	}
 }
 
 func buildKeyValues(valMap map[string]string) keyValues {

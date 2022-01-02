@@ -365,4 +365,11 @@ func TestWasmRule(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("newVals: %v", newVals)
 	assert.Equal(t, []interface{}{"value-haha", "value-hehe"}, newVals)
+
+	// 换成其他非string会报错
+	vals = []interface{}{1, "2"}
+	newVals, err = rule.wasmHandle(nil, vals)
+	assert.NoError(t, err)
+	t.Logf("newVals: %v", newVals)
+	assert.Equal(t, []interface{}{1, "value-2"}, newVals)
 }

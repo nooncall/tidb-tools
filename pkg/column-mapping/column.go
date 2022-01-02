@@ -201,9 +201,7 @@ func (r *Rule) wasmHandle(info *mappingInfo, vals []interface{}) ([]interface{},
 	}
 
 	// 从wasm中获取处理后的值
-	// 注意目前还未处理类型反向转换, 全部返回string
-	newVals := r.wasmHandler.GetVals()
-	return newVals, nil
+	return r.wasmHandler.GetVals()
 }
 
 func (r *Rule) nextWasmCtxID() int32 {
