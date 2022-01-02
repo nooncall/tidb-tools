@@ -146,7 +146,10 @@ func (r *Rule) Valid() error {
 }
 
 func (r *Rule) initWasm() error {
-	dir, _ := os.Getwd()
+	dir := os.Getenv("WASM_MODULE_DIR")
+	if dir == "" {
+		dir, _ = os.Getwd()
+	}
 	p := path.Join(dir, r.WasmModule)
 	instance := wasmer.NewWasmerInstanceFromFile(p)
 	v1.RegisterImports(instance)
