@@ -98,7 +98,7 @@ type Rule struct {
 	WasmModule string `yaml:"wasm-module" json:"wasm-module" toml:"wasm-module"`
 
 	wasmInstance common.WasmInstance
-	wasmCtx      v1.ContextHandler
+	wasmCtx      *v1.ABIContext
 	wasmHandler  *ColumnMappingImportsHandler
 	wasmCtxID    int32
 }
@@ -172,13 +172,16 @@ func (r *Rule) initWasm() error {
 	if err != nil {
 		return errors.Annotate(err, "init rootContextID error")
 	}
-	r.wasmCtxID = WasmRootContextID + 1
+	r.wasmCtxID = WasmRootContextID
 
 	return nil
 }
 
 func (r *Rule) wasmHandle(info *mappingInfo, vals []interface{}) ([]interface{}, error) {
 	ctx := r.wasmCtx
+	r.wasmInstance.Lock(ctx)
+	defer r.wasmInstance.Unlock()
+
 	ctxID := r.nextWasmCtxID()
 	// create wasm-side context id for current http req
 	err := ctx.GetExports().ProxyOnContextCreate(ctxID, WasmRootContextID)

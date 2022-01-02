@@ -34,13 +34,13 @@ func (h *ColumnMappingImportsHandler) GetHttpRequestHeader() common.HeaderMap {
 }
 
 func (h *ColumnMappingImportsHandler) ClearAndSet(vals []interface{}) {
-	valMap := make(common.CommonHeader)
+	//valMap := make(common.CommonHeader)
+	valMap := h.ValMap
 	for idx, val := range vals {
 		idxStr := strconv.Itoa(idx)
 		valStr := fmt.Sprintf("%v", val)
 		valMap[idxStr] = valStr
 	}
-	h.ValMap = valMap
 	h.currentVals = vals
 }
 

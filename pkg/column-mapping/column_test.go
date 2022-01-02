@@ -18,6 +18,8 @@ import (
 	"testing"
 
 	. "github.com/pingcap/check"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClient(t *testing.T) {
@@ -300,8 +302,12 @@ func (t *testColumnMappingSuit) TestCaseSensitive(c *C) {
 // 使用wasm实现添加前缀的expr
 func (t *testColumnMappingSuit) TestHandleWasm(c *C) {
 	rules := []*Rule{
-
-		{PatternSchema: "Test*", PatternTable: "xxx*", SourceColumn: "", TargetColumn: "id", Expression: AddPrefix, Arguments: []string{"instance_id:"}, CreateTableQuery: "xx", WasmModule: "add_prefix.wasm"},
+		{
+			PatternSchema: "Test*", PatternTable: "xxx*",
+			SourceColumn: "", TargetColumn: "id",
+			Expression: AddPrefix, Arguments: []string{"instance_id:"},
+			CreateTableQuery: "xx", WasmModule: "headers_set.wasm",
+		},
 	}
 
 	// initial column mapping
@@ -334,4 +340,29 @@ func (t *testColumnMappingSuit) TestHandleWasm(c *C) {
 	//c.Assert(err, IsNil)
 	//c.Assert(statement, Equals, "create table xxx")
 	//c.Assert(poss, IsNil)
+}
+
+func TestWasmRule(t *testing.T) {
+	rule := &Rule{
+		PatternSchema: "Test*", PatternTable: "xxx*",
+		SourceColumn: "", TargetColumn: "id",
+		Expression: AddPrefix, Arguments: []string{"instance_id:"},
+		CreateTableQuery: "xx", WasmModule: "add_prefix.wasm",
+	}
+	err := rule.initWasm()
+	require.NoError(t, err)
+
+	// 第1次跑
+	vals := []interface{}{"1", "2"}
+	newVals, err := rule.wasmHandle(nil, vals)
+	assert.NoError(t, err)
+	t.Logf("newVals: %v", newVals)
+	assert.Equal(t, []interface{}{"value-1", "value-2"}, newVals)
+
+	// 换成其他值, 第2次跑
+	vals = []interface{}{"haha", "hehe"}
+	newVals, err = rule.wasmHandle(nil, vals)
+	assert.NoError(t, err)
+	t.Logf("newVals: %v", newVals)
+	assert.Equal(t, []interface{}{"value-haha", "value-hehe"}, newVals)
 }

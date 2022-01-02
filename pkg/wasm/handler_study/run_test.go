@@ -102,7 +102,7 @@ func TestColumnMapping(t *testing.T) {
 	}
 
 	dir, _ := os.Getwd()
-	path := path2.Join(dir, "module/column_mapping.wasm")
+	path := path2.Join(dir, "module/headers_set.wasm")
 	instance := wasmer.NewWasmerInstanceFromFile(path)
 	v1.RegisterImports(instance)
 	err := instance.Start()
@@ -133,4 +133,19 @@ func TestColumnMapping(t *testing.T) {
 
 	// 如果key也变了, 原来的key不会被删除
 	fmt.Printf("[server]new header: %+v", commonHeader)
+
+	importHandler.reqHeader = make(common.CommonHeader)
+	importHandler.reqHeader.Set("next_key", "next_value")
+
+	contextID = 3
+	err = ctx.GetExports().ProxyOnContextCreate(contextID, rootContextID)
+	require.NoError(t, err)
+
+	// call wasm-side on_request_header
+	action, err = ctx.GetExports().ProxyOnRequestHeaders(contextID, int32(len(commonHeader)), 1)
+	fmt.Printf("[server] ProxyOnRequestHeaders contextID: %d, action: %v, err: %v\n", contextID, action, err)
+
+	// 如果key也变了, 原来的key不会被删除
+	fmt.Printf("[server]new header: %+v", commonHeader)
+
 }
