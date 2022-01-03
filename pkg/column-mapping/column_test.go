@@ -300,26 +300,29 @@ func (t *testColumnMappingSuit) TestCaseSensitive(c *C) {
 }
 
 // 使用wasm实现添加前缀的expr
-func (t *testColumnMappingSuit) TestHandleWasm(c *C) {
+func TestHandleWasm(t *testing.T) {
 	rules := []*Rule{
 		{
 			PatternSchema: "Test*", PatternTable: "xxx*",
-			SourceColumn: "", TargetColumn: "id",
+			SourceColumn: "id_src", TargetColumn: "id",
 			Expression: AddPrefix, Arguments: []string{"instance_id:"},
-			CreateTableQuery: "xx", WasmModule: "headers_set.wasm",
+			CreateTableQuery: "xx", WasmModule: "add_prefix.wasm",
 		},
 	}
 
 	// initial column mapping
 	m, err := NewMapping(false, rules)
-	c.Assert(err, IsNil)
-	c.Assert(m.cache.infos, HasLen, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, len(m.cache.infos), 0)
 
 	// test add prefix, add suffix is similar
-	vals, poss, err := m.HandleRowValue("test", "xxx", []string{"age", "id"}, []interface{}{1, "1"})
-	c.Assert(err, IsNil)
-	c.Assert(vals, DeepEquals, []interface{}{1, "instance_id:1"})
-	c.Assert(poss, DeepEquals, []int{-1, 1})
+	vals, poss, err := m.HandleRowValue("test", "xxx", []string{"age", "id", "name"}, []interface{}{1, "1", "hello"})
+	assert.NoError(t, err)
+	//c.Assert(err, IsNil)
+	assert.Equal(t, []interface{}{1, "value-1", "hello"}, vals)
+	assert.Equal(t, []int{-1, 1}, poss)
+	//c.Assert(vals, DeepEquals, []interface{}{1, "test-1"})
+	//c.Assert(poss, DeepEquals, []int{-1, 1})
 
 	//// test cache
 	//vals, poss, err = m.HandleRowValue("test", "xxx", []string{"name"}, []interface{}{1, "1"})

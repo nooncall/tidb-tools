@@ -11,9 +11,11 @@ import (
 
 type ColumnMappingImportsHandler struct {
 	v1.DefaultImportsHandler
-	ValMap common.CommonHeader
+	ValMap     common.CommonHeader
+	ColIndexes common.CommonHeader
 
-	currentVals []interface{}
+	currentVals       []interface{}
+	currentColIndexes []int
 }
 
 // 用于将map[idx]val转换回[]string, 并保留顺序
@@ -21,7 +23,11 @@ type keyValues [][2]string
 
 func NewColumnMappingImportsHandler() *ColumnMappingImportsHandler {
 	valMap := make(common.CommonHeader)
-	return &ColumnMappingImportsHandler{ValMap: valMap}
+	colIndexes := make(common.CommonHeader)
+	return &ColumnMappingImportsHandler{
+		ValMap:     valMap,
+		ColIndexes: colIndexes,
+	}
 }
 
 func (h *ColumnMappingImportsHandler) Log(level v1.LogLevel, msg string) v1.WasmResult {
@@ -29,12 +35,18 @@ func (h *ColumnMappingImportsHandler) Log(level v1.LogLevel, msg string) v1.Wasm
 	return v1.WasmResultOk
 }
 
+// 获取row change的所有列值
 func (h *ColumnMappingImportsHandler) GetHttpRequestHeader() common.HeaderMap {
 	return h.ValMap
 }
 
-func (h *ColumnMappingImportsHandler) ClearAndSet(vals []interface{}) {
-	//valMap := make(common.CommonHeader)
+// 获取插件需要修改的列的索引
+func (h *ColumnMappingImportsHandler) GetHttpRequestTrailer() common.HeaderMap {
+	return h.ColIndexes
+}
+
+func (h *ColumnMappingImportsHandler) ClearAndSet(vals []interface{}, colIndexes []int) {
+	// 设置值
 	valMap := h.ValMap
 	for idx, val := range vals {
 		idxStr := strconv.Itoa(idx)
@@ -42,21 +54,39 @@ func (h *ColumnMappingImportsHandler) ClearAndSet(vals []interface{}) {
 		valMap[idxStr] = valStr
 	}
 	h.currentVals = vals
+
+	// 设置需要修改的列索引
+	idxes := make(common.CommonHeader)
+	for _, idx := range colIndexes {
+		idxes[strconv.Itoa(idx)] = ""
+	}
+	h.ColIndexes = idxes
+	h.currentColIndexes = colIndexes
 }
 
 func (h *ColumnMappingImportsHandler) GetVals() ([]interface{}, error) {
 	kv := buildKeyValues(h.ValMap)
-	var rets []interface{}
-	for idx, v := range kv.ToValues() {
-		vi, err := buildNewInterfaceValue(h.currentVals[idx], v)
+	values := kv.ToValues()
+	for _, idx := range h.currentColIndexes {
+		vi, err := buildNewInterfaceValue(h.currentVals[idx], values[idx])
 		if err != nil {
-			// 这里不返回错误了, 直接返回原值, 先保证能兼容用
-			rets = append(rets, h.currentVals[idx])
-			continue
+			return nil, fmt.Errorf("buildNewInterfaceValue error, idx: %d, err: %v", idx, err)
 		}
-		rets = append(rets, vi)
+		h.currentVals[idx] = vi
 	}
-	return rets, nil
+	return h.currentVals, nil
+
+	//var rets []interface{}
+	//for idx, v := range kv.ToValues() {
+	//	vi, err := buildNewInterfaceValue(h.currentVals[idx], v)
+	//	if err != nil {
+	//		这里不返回错误了, 直接返回原值, 先保证能兼容用
+	//rets = append(rets, h.currentVals[idx])
+	//continue
+	//}
+	//rets = append(rets, vi)
+	//}
+	//return rets, nil
 }
 
 func buildNewInterfaceValue(originValue interface{}, newValueStr string) (interface{}, error) {

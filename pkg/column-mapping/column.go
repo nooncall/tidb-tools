@@ -261,6 +261,7 @@ func (m *Mapping) RemoveRule(rule *Rule) error {
 }
 
 // HandleRowValue handles row value
+// 注意这个columns是target column名称
 func (m *Mapping) HandleRowValue(schema, table string, columns []string, vals []interface{}) ([]interface{}, []int, error) {
 	if m == nil {
 		return vals, nil, nil

@@ -60,8 +60,8 @@ func (r *Rule) wasmHandle(info *mappingInfo, vals []interface{}) ([]interface{},
 		return nil, errors.Annotatef(err, "ProxyOnContextCreate error, vals: %+v", vals)
 	}
 
-	// 先把map中的上一次的值清掉, 并写入当前值
-	r.wasmHandler.ClearAndSet(vals)
+	// 先把map中的上一次的值清掉, 并写入当前值, 并传入position
+	r.wasmHandler.ClearAndSet(vals, []int{info.targetPosition})
 
 	// 通知wasm module处理数据
 	action, err := ctx.GetExports().ProxyOnRequestHeaders(ctxID, int32(len(vals)), 1)
