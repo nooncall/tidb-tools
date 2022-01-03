@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/pingcap/tidb-tools/pkg/wasm/common"
 	v1 "github.com/pingcap/tidb-tools/pkg/wasm/v1"
@@ -16,6 +17,9 @@ type ColumnMappingImportsHandler struct {
 
 	currentVals       []interface{}
 	currentColIndexes []int
+
+	// 不加锁在获取结果时会有并发问题
+	mu sync.Mutex
 }
 
 // 用于将map[idx]val转换回[]string, 并保留顺序
@@ -37,15 +41,21 @@ func (h *ColumnMappingImportsHandler) Log(level v1.LogLevel, msg string) v1.Wasm
 
 // 获取row change的所有列值
 func (h *ColumnMappingImportsHandler) GetHttpRequestHeader() common.HeaderMap {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	return h.ValMap
 }
 
 // 获取插件需要修改的列的索引
 func (h *ColumnMappingImportsHandler) GetHttpRequestTrailer() common.HeaderMap {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	return h.ColIndexes
 }
 
 func (h *ColumnMappingImportsHandler) ClearAndSet(vals []interface{}, colIndexes []int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	// 设置值
 	valMap := h.ValMap
 	for idx, val := range vals {
@@ -65,6 +75,9 @@ func (h *ColumnMappingImportsHandler) ClearAndSet(vals []interface{}, colIndexes
 }
 
 func (h *ColumnMappingImportsHandler) GetVals() ([]interface{}, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	kv := buildKeyValues(h.ValMap)
 	values := kv.ToValues()
 	for _, idx := range h.currentColIndexes {
