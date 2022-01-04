@@ -7,17 +7,73 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-tools/pkg/wasm/v1"
+	v1 "github.com/pingcap/tidb-tools/pkg/wasm/v1"
 	"github.com/pingcap/tidb-tools/pkg/wasm/wasmer"
 )
 
 func (r *Rule) initWasm() error {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return errors.WithMessage(err, "fsnotify NewWatcher error")
+	}
+	r.fsWatcher = watcher
+
 	dir := os.Getenv("WASM_MODULE_DIR")
 	if dir == "" {
 		dir, _ = os.Getwd()
 	}
 	p := path.Join(dir, r.WasmModule)
+	r.wasmPath = p
+
+	if err := r.fsWatcher.Add(dir); err != nil {
+		return errors.WithMessage(err, "fsWatcher.Add error")
+	}
+	r.startWatchFileChange()
+	return r.InitWasmInstance(p)
+}
+
+func (r *Rule) startWatchFileChange() {
+	watcher := r.fsWatcher
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				/*
+					fswatcher event:  "/Users/eastfisher/workspace/pingcap/tidb-tools/pkg/column-mapping/add_prefix.wasm": REMOVE
+					fswatcher event:  "/Users/eastfisher/workspace/pingcap/tidb-tools/pkg/column-mapping/add_prefix.wasm": CREATE
+					fswatcher modified file:  /Users/eastfisher/workspace/pingcap/tidb-tools/pkg/column-mapping/add_prefix.wasm
+					fswatcher event:  "/Users/eastfisher/workspace/pingcap/tidb-tools/pkg/column-mapping/add_prefix.wasm": WRITE
+					fswatcher event:  "/Users/eastfisher/workspace/pingcap/tidb-tools/pkg/column-mapping/add_prefix.wasm": WRITE|CHMOD
+				*/
+				fmt.Println("fswatcher event: ", event)
+
+				if event.Name == r.wasmPath && (event.Op&fsnotify.Chmod) == fsnotify.Chmod {
+					fmt.Println("fswatcher modified file: ", event.Name)
+					if err := r.InitWasmInstance(r.wasmPath); err != nil {
+						fmt.Printf("fswatcher re init wasm error: %v", err)
+					}
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				fmt.Println("fswatcher error: ", err)
+			}
+		}
+	}()
+}
+
+func (r *Rule) InitWasmInstance(p string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.closeCurrentWasm()
+
 	instance := wasmer.NewWasmerInstanceFromFile(p)
 	v1.RegisterImports(instance)
 	if err := instance.Start(); err != nil {
@@ -44,10 +100,25 @@ func (r *Rule) initWasm() error {
 	}
 	r.wasmCtxID = WasmRootContextID
 
+	fmt.Println("init wasm success!!!")
 	return nil
 }
 
-func (r *Rule) wasmHandle(info *mappingInfo, vals []interface{}) ([]interface{}, error) {
+func (r *Rule) closeCurrentWasm() {
+	fmt.Println("close current wasm!!!")
+	if r.wasmInstance != nil {
+		r.wasmInstance.Stop()
+		r.wasmInstance = nil
+	}
+	r.wasmCtx = nil
+	r.wasmHandler = nil
+	r.wasmCtxID = 0
+}
+
+func (r *Rule) WasmHandle(info *mappingInfo, vals []interface{}) ([]interface{}, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	ctx := r.wasmCtx
 	r.wasmInstance.Lock(ctx)
 	defer r.wasmInstance.Unlock()

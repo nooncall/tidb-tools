@@ -16,6 +16,7 @@ package column
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	. "github.com/pingcap/check"
 	"github.com/stretchr/testify/assert"
@@ -316,11 +317,19 @@ func TestHandleWasm(t *testing.T) {
 	assert.Equal(t, len(m.cache.infos), 0)
 
 	// test add prefix, add suffix is similar
-	vals, poss, err := m.HandleRowValue("test", "xxx", []string{"age", "id", "name"}, []interface{}{1, "1", "hello"})
+	vals, poss, err := m.HandleRowValue("test", "xxx", []string{"age", "id", "name"}, []interface{}{2, "1", "hello"})
 	assert.NoError(t, err)
 	//c.Assert(err, IsNil)
-	assert.Equal(t, []interface{}{1, "value-1", "hello"}, vals)
+	assert.Equal(t, []interface{}{2, "value-1", "hello"}, vals)
 	assert.Equal(t, []int{-1, 1}, poss)
+
+	time.Sleep(10 * time.Second)
+	vals, poss, err = m.HandleRowValue("test", "xxx", []string{"age", "id", "name"}, []interface{}{2, "1", "hello"})
+	assert.NoError(t, err)
+	//c.Assert(err, IsNil)
+	assert.Equal(t, []interface{}{2, "value-1", "hello"}, vals)
+	assert.Equal(t, []int{-1, 1}, poss)
+
 	//c.Assert(vals, DeepEquals, []interface{}{1, "test-1"})
 	//c.Assert(poss, DeepEquals, []int{-1, 1})
 
@@ -357,21 +366,21 @@ func TestWasmRule(t *testing.T) {
 
 	// 第1次跑
 	vals := []interface{}{"1", "2"}
-	newVals, err := rule.wasmHandle(nil, vals)
+	newVals, err := rule.WasmHandle(nil, vals)
 	assert.NoError(t, err)
 	t.Logf("newVals: %v", newVals)
 	assert.Equal(t, []interface{}{"value-1", "value-2"}, newVals)
 
 	// 换成其他值, 第2次跑
 	vals = []interface{}{"haha", "hehe"}
-	newVals, err = rule.wasmHandle(nil, vals)
+	newVals, err = rule.WasmHandle(nil, vals)
 	assert.NoError(t, err)
 	t.Logf("newVals: %v", newVals)
 	assert.Equal(t, []interface{}{"value-haha", "value-hehe"}, newVals)
 
 	// 换成其他非string会报错
 	vals = []interface{}{1, "2"}
-	newVals, err = rule.wasmHandle(nil, vals)
+	newVals, err = rule.WasmHandle(nil, vals)
 	assert.NoError(t, err)
 	t.Logf("newVals: %v", newVals)
 	assert.Equal(t, []interface{}{1, "value-2"}, newVals)

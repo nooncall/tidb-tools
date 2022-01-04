@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/pingcap/errors"
 	selector "github.com/pingcap/tidb-tools/pkg/table-rule-selector"
 	"github.com/pingcap/tidb-tools/pkg/wasm/common"
@@ -93,10 +94,15 @@ type Rule struct {
 
 	WasmModule string `yaml:"wasm-module" json:"wasm-module" toml:"wasm-module"`
 
+	wasmPath string
+
 	wasmInstance common.WasmInstance
 	wasmCtx      *v1.ABIContext
 	wasmHandler  *ColumnMappingImportsHandler
 	wasmCtxID    int32
+
+	mu        sync.Mutex
+	fsWatcher *fsnotify.Watcher
 }
 
 // ToLower covert schema/table parttern to lower case
@@ -295,7 +301,7 @@ func (m *Mapping) HandleRowValue(schema, table string, columns []string, vals []
 
 func (m *Mapping) getExprFunc(rule *Rule) (ExprFunc, bool) {
 	if rule.wasmInstance != nil {
-		return rule.wasmHandle, true
+		return rule.WasmHandle, true
 	}
 	exprFunc, ok := Exprs[rule.Expression]
 	return exprFunc, ok
