@@ -32,6 +32,8 @@ type TableRule struct {
 	TableExtractor  *TableExtractor  `json:"extract-table,omitempty" toml:"extract-table,omitempty" yaml:"extract-table,omitempty"`
 	SchemaExtractor *SchemaExtractor `json:"extract-schema,omitempty" toml:"extract-schema,omitempty" yaml:"extract-schema,omitempty"`
 	SourceExtractor *SourceExtractor `json:"extract-source,omitempty" toml:"extract-source,omitempty" yaml:"extract-source,omitempty"`
+
+	WasmExtractor *WasmExtractor `json:"wasm-extractor" toml:"wasm-extractor,omitempty" yaml:"wasm-extractor,omitempty"`
 }
 
 // TableExtractor extracts table name to column
@@ -304,5 +306,70 @@ func (r *Table) FetchExtendColumn(schema, table, source string) ([]string, []str
 		cols = append(cols, rule.SourceExtractor.TargetColumn)
 		vals = append(vals, rule.extractVal(source, rule.SourceExtractor))
 	}
+	return cols, vals
+}
+
+func (r *Table) FetchExtendColumnForSyncer(schema, table, source string, data [][]interface{}) ([]string, [][]string) {
+	var cols []string
+	var vals [][]string
+	rules := r.Match(schema, table)
+	var (
+		schemaRules = make([]*TableRule, 0, len(rules))
+		tableRules  = make([]*TableRule, 0, len(rules))
+	)
+	for i := range rules {
+		rule, ok := rules[i].(*TableRule)
+		if !ok {
+			return cols, vals
+		}
+		if len(rule.TablePattern) == 0 {
+			schemaRules = append(schemaRules, rule)
+		} else {
+			tableRules = append(tableRules, rule)
+		}
+	}
+	if len(tableRules) == 0 && len(schemaRules) == 0 {
+		return cols, vals
+	}
+	var rule *TableRule
+	// table level rules have highest priority
+	if len(tableRules) == 0 {
+		rule = schemaRules[0]
+	} else {
+		rule = tableRules[0]
+	}
+
+	if rule.WasmExtractor != nil {
+		cols = append(cols, rule.WasmExtractor.TargetColumn)
+		for _, d := range data {
+			newColVal, err := rule.WasmExtractor.WasmHandle(d)
+			if err != nil {
+				fmt.Printf("Table rule.WasmExtractor.WasmHandle error, data: %v, err: %v", d, err)
+			}
+			vals = append(vals, []string{newColVal})
+		}
+	}
+
+	if rule.TableExtractor != nil {
+		cols = append(cols, rule.TableExtractor.TargetColumn)
+		for range data {
+			vals = append(vals, []string{rule.extractVal(table, rule.TableExtractor)})
+		}
+	}
+
+	if rule.SchemaExtractor != nil {
+		cols = append(cols, rule.SchemaExtractor.TargetColumn)
+		for range data {
+			vals = append(vals, []string{rule.extractVal(table, rule.SchemaExtractor)})
+		}
+	}
+
+	if rule.SourceExtractor != nil {
+		cols = append(cols, rule.SourceExtractor.TargetColumn)
+		for range data {
+			vals = append(vals, []string{rule.extractVal(table, rule.SourceExtractor)})
+		}
+	}
+
 	return cols, vals
 }
