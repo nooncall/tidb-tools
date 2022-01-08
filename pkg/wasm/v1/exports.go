@@ -91,56 +91,8 @@ func (a *ABIContext) ProxyOnTick(rootContextID int32) error {
 	return nil
 }
 
-func (a *ABIContext) ProxyOnNewConnection(contextID int32) (Action, error) {
-	_, action, err := a.CallWasmFunction("proxy_on_new_connection", contextID)
-	if err != nil {
-		return ActionPause, err
-	}
-	return action, nil
-}
-
-func (a *ABIContext) ProxyOnDownstreamData(contextID int32, dataLength int32, endOfStream int32) (Action, error) {
-	_, action, err := a.CallWasmFunction("proxy_on_downstream_data", contextID, dataLength, endOfStream)
-	if err != nil {
-		return ActionPause, err
-	}
-	return action, nil
-}
-
-func (a *ABIContext) ProxyOnDownstreamConnectionClose(contextID int32, closeType int32) error {
-	_, _, err := a.CallWasmFunction("proxy_on_downstream_connection_close", contextID, closeType)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (a *ABIContext) ProxyOnUpstreamData(contextID int32, dataLength int32, endOfStream int32) (Action, error) {
-	_, action, err := a.CallWasmFunction("proxy_on_upstream_data", contextID, dataLength, endOfStream)
-	if err != nil {
-		return ActionPause, err
-	}
-	return action, nil
-}
-
-func (a *ABIContext) ProxyOnUpstreamConnectionClose(contextID int32, closeType int32) error {
-	_, _, err := a.CallWasmFunction("proxy_on_upstream_connection_close", contextID, closeType)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (a *ABIContext) ProxyOnRequestHeaders(contextID int32, numHeaders int32, endOfStream int32) (Action, error) {
 	_, action, err := a.CallWasmFunction("proxy_on_request_headers", contextID, numHeaders, endOfStream)
-	if err != nil {
-		return ActionPause, err
-	}
-	return action, nil
-}
-
-func (a *ABIContext) ProxyOnRequestBody(contextID int32, bodyBufferLength int32, endOfStream int32) (Action, error) {
-	_, action, err := a.CallWasmFunction("proxy_on_request_body", contextID, bodyBufferLength, endOfStream)
 	if err != nil {
 		return ActionPause, err
 	}
@@ -155,98 +107,10 @@ func (a *ABIContext) ProxyOnRequestTrailers(contextID int32, trailers int32) (Ac
 	return action, nil
 }
 
-func (a *ABIContext) ProxyOnRequestMetadata(contextID int32, nElements int32) (Action, error) {
-	_, action, err := a.CallWasmFunction("proxy_on_request_metadata", contextID, nElements)
-	if err != nil {
-		return ActionPause, err
-	}
-	return action, nil
-}
-
-func (a *ABIContext) ProxyOnResponseHeaders(contextID int32, headers int32, endOfStream int32) (Action, error) {
-	_, action, err := a.CallWasmFunction("proxy_on_response_headers", contextID, headers, endOfStream)
-	if err != nil {
-		return ActionPause, err
-	}
-	return action, nil
-}
-
-func (a *ABIContext) ProxyOnResponseBody(contextID int32, bodyBufferLength int32, endOfStream int32) (Action, error) {
-	_, action, err := a.CallWasmFunction("proxy_on_response_body", contextID, bodyBufferLength, endOfStream)
-	if err != nil {
-		return ActionPause, err
-	}
-	return action, nil
-}
-
-func (a *ABIContext) ProxyOnResponseTrailers(contextID int32, trailers int32) (Action, error) {
-	_, action, err := a.CallWasmFunction("proxy_on_response_trailers", contextID, trailers)
-	if err != nil {
-		return ActionPause, err
-	}
-	return action, nil
-}
-
-func (a *ABIContext) ProxyOnResponseMetadata(contextID int32, nElements int32) (Action, error) {
-	_, action, err := a.CallWasmFunction("proxy_on_response_metadata", contextID, nElements)
-	if err != nil {
-		return ActionPause, err
-	}
-	return action, nil
-}
-
-func (a *ABIContext) ProxyOnHttpCallResponse(contextID int32, token int32, headers int32, bodySize int32, trailers int32) error {
-	_, _, err := a.CallWasmFunction("proxy_on_http_call_response", contextID, token, headers, bodySize, trailers)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (a *ABIContext) ProxyOnQueueReady(rootContextID int32, token int32) error {
-	_, _, err := a.CallWasmFunction("proxy_on_queue_ready", rootContextID, token)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (a *ABIContext) ProxyOnMemoryAllocate(size int32) (int32, error) {
 	res, _, err := a.CallWasmFunction("proxy_on_memory_allocate", size)
 	if err != nil {
 		return 0, err
 	}
 	return res.(int32), nil
-}
-
-func (a *ABIContext) ProxyOnGrpcCallResponseHeaderMetadata(contextID int32, calloutID int32, nElements int32) error {
-	_, _, err := a.CallWasmFunction("proxy_on_grpc_call_response_header_metadata", contextID, calloutID, nElements)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (a *ABIContext) ProxyOnGrpcCallResponseMessage(contextID int32, calloutID int32, msgSize int32) error {
-	_, _, err := a.CallWasmFunction("proxy_on_grpc_call_response_message", contextID, calloutID, msgSize)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (a *ABIContext) ProxyOnGrpcCallResponseTrailerMetadata(contextID int32, calloutID int32, nElements int32) error {
-	_, _, err := a.CallWasmFunction("proxy_on_grpc_call_response_trailer_metadata", contextID, calloutID, nElements)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (a *ABIContext) ProxyOnGrpcCallClose(contextID int32, calloutID int32, statusCode int32) error {
-	_, _, err := a.CallWasmFunction("proxy_on_grpc_call_close", contextID, calloutID, statusCode)
-	if err != nil {
-		return err
-	}
-	return nil
 }
