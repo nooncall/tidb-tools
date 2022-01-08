@@ -16,7 +16,6 @@ package column
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	. "github.com/pingcap/check"
 	"github.com/stretchr/testify/assert"
@@ -307,7 +306,7 @@ func TestHandleWasm(t *testing.T) {
 			PatternSchema: "Test*", PatternTable: "xxx*",
 			SourceColumn: "id_src", TargetColumn: "id",
 			Expression: AddPrefix, Arguments: []string{"instance_id:"},
-			CreateTableQuery: "xx", WasmModule: "add_prefix.wasm",
+			CreateTableQuery: "xx", WasmModule: "add_prefix2.wasm",
 		},
 	}
 
@@ -323,7 +322,7 @@ func TestHandleWasm(t *testing.T) {
 	assert.Equal(t, []interface{}{2, "value-1", "hello"}, vals)
 	assert.Equal(t, []int{-1, 1}, poss)
 
-	time.Sleep(10 * time.Second)
+	//time.Sleep(10 * time.Second)
 	vals, poss, err = m.HandleRowValue("test", "xxx", []string{"age", "id", "name"}, []interface{}{2, "1", "hello"})
 	assert.NoError(t, err)
 	//c.Assert(err, IsNil)
@@ -359,7 +358,7 @@ func TestWasmRule(t *testing.T) {
 		PatternSchema: "Test*", PatternTable: "xxx*",
 		SourceColumn: "", TargetColumn: "id",
 		Expression: AddPrefix, Arguments: []string{"instance_id:"},
-		CreateTableQuery: "xx", WasmModule: "add_prefix.wasm",
+		CreateTableQuery: "xx", WasmModule: "add_prefix2.wasm",
 	}
 	err := rule.initWasm()
 	require.NoError(t, err)

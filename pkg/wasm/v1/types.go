@@ -51,15 +51,6 @@ const (
 	BufferTypeCallData             BufferType = 8
 )
 
-type MetricType int32
-
-const (
-	MetricTypeCounter   MetricType = 0
-	MetricTypeGauge     MetricType = 1
-	MetricTypeHistogram MetricType = 2
-	MetricTypeMax       MetricType = 2
-)
-
 type WasmResult int32
 
 const (

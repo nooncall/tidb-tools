@@ -32,32 +32,8 @@ type Exports interface {
 
 	ProxyOnTick(rootContextID int32) error
 
-	ProxyOnNewConnection(contextID int32) (Action, error)
-
-	ProxyOnDownstreamData(contextID int32, dataLength int32, endOfStream int32) (Action, error)
-	ProxyOnDownstreamConnectionClose(contextID int32, closeType int32) error
-
-	ProxyOnUpstreamData(contextID int32, dataLength int32, endOfStream int32) (Action, error)
-	ProxyOnUpstreamConnectionClose(contextID int32, closeType int32) error
-
 	ProxyOnRequestHeaders(contextID int32, headers int32, endOfStream int32) (Action, error)
-	ProxyOnRequestBody(contextID int32, bodyBufferLength int32, endOfStream int32) (Action, error)
 	ProxyOnRequestTrailers(contextID int32, trailers int32) (Action, error)
-	ProxyOnRequestMetadata(contextID int32, nElements int32) (Action, error)
-
-	ProxyOnResponseHeaders(contextID int32, headers int32, endOfStream int32) (Action, error)
-	ProxyOnResponseBody(contextID int32, bodyBufferLength int32, endOfStream int32) (Action, error)
-	ProxyOnResponseTrailers(contextID int32, trailers int32) (Action, error)
-	ProxyOnResponseMetadata(contextID int32, nElements int32) (Action, error)
-
-	ProxyOnHttpCallResponse(contextID int32, token int32, headers int32, bodySize int32, trailers int32) error
-
-	ProxyOnQueueReady(rootContextID int32, token int32) error
-
-	ProxyOnGrpcCallResponseHeaderMetadata(contextID int32, calloutID int32, nElements int32) error
-	ProxyOnGrpcCallResponseMessage(contextID int32, calloutID int32, msgSize int32) error
-	ProxyOnGrpcCallResponseTrailerMetadata(contextID int32, calloutID int32, nElements int32) error
-	ProxyOnGrpcCallClose(contextID int32, calloutID int32, statusCode int32) error
 }
 
 type ImportsHandler interface {
@@ -73,68 +49,10 @@ type ImportsHandler interface {
 	GetVmConfig() common.IoBuffer
 	GetPluginConfig() common.IoBuffer
 
-	// metric
-	DefineMetric(metricType MetricType, name string) (int32, WasmResult)
-	IncrementMetric(metricID int32, offset int64) WasmResult
-	RecordMetric(metricID int32, value int64) WasmResult
-	GetMetric(metricID int32) (int64, WasmResult)
-	RemoveMetric(metricID int32) WasmResult
-
-	// property
-	GetProperty(key string) (string, WasmResult)
-	SetProperty(key string, value string) WasmResult
-
-	// l4
-	GetDownStreamData() common.IoBuffer
-	GetUpstreamData() common.IoBuffer
-	ResumeDownstream() WasmResult
-	ResumeUpstream() WasmResult
-
 	// http
 	GetHttpRequestHeader() common.HeaderMap
-	GetHttpRequestBody() common.IoBuffer
 	GetHttpRequestTrailer() common.HeaderMap
 
-	GetHttpResponseHeader() common.HeaderMap
-	GetHttpResponseBody() common.IoBuffer
-	GetHttpResponseTrailer() common.HeaderMap
-
-	HttpCall(url string, headers common.HeaderMap, body common.IoBuffer, trailer common.HeaderMap, timeoutMilliseconds int32) (int32, WasmResult)
-	GetHttpCallResponseHeaders() common.HeaderMap
-	GetHttpCallResponseBody() common.IoBuffer
-	GetHttpCallResponseTrailer() common.HeaderMap
-
-	ResumeHttpRequest() WasmResult
-	ResumeHttpResponse() WasmResult
-	SendHttpResp(respCode int32, respCodeDetail common.IoBuffer, respBody common.IoBuffer, additionalHeaderMap common.HeaderMap, grpcCode int32) WasmResult
-
-	// grpc
-	OpenGrpcStream(grpcService string, serviceName string, method string) (int32, WasmResult)
-	SendGrpcCallMsg(token int32, data common.IoBuffer, endOfStream int32) WasmResult
-	CancelGrpcCall(token int32) WasmResult
-	CloseGrpcCall(token int32) WasmResult
-
-	GrpcCall(grpcService string, serviceName string, method string, data common.IoBuffer, timeoutMilliseconds int32) (int32, WasmResult)
-	GetGrpcReceiveInitialMetaData() common.HeaderMap
-	GetGrpcReceiveBuffer() common.IoBuffer
-	GetGrpcReceiveTrailerMetaData() common.HeaderMap
-
-	// foreign
-	CallForeignFunction(funcName string, param []byte) ([]byte, WasmResult)
-	GetFuncCallData() common.IoBuffer
-
-	// shared
-	GetSharedData(key string) (string, uint32, WasmResult)
-	SetSharedData(key string, value string, cas uint32) WasmResult
-
-	RegisterSharedQueue(queueName string) (uint32, WasmResult)
-	RemoveSharedQueue(queueID uint32) WasmResult
-	ResolveSharedQueue(queueName string) (uint32, WasmResult)
-	EnqueueSharedQueue(queueID uint32, data string) WasmResult
-	DequeueSharedQueue(queueID uint32) (string, WasmResult)
-
-	// for golang host environment
-	// Wait until async call return, eg. sync http call in golang
 	Wait() Action
 
 	// custom extension

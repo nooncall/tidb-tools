@@ -25,24 +25,10 @@ func GetBuffer(instance common.WasmInstance, bufferType BufferType) common.IoBuf
 	im := getImportHandler(instance)
 
 	switch bufferType {
-	case BufferTypeHttpRequestBody:
-		return im.GetHttpRequestBody()
-	case BufferTypeHttpResponseBody:
-		return im.GetHttpResponseBody()
-	case BufferTypeDownstreamData:
-		return im.GetDownStreamData()
-	case BufferTypeUpstreamData:
-		return im.GetUpstreamData()
-	case BufferTypeHttpCallResponseBody:
-		return im.GetHttpCallResponseBody()
-	case BufferTypeGrpcReceiveBuffer:
-		return im.GetGrpcReceiveBuffer()
 	case BufferTypePluginConfiguration:
 		return im.GetPluginConfig()
 	case BufferTypeVmConfiguration:
 		return im.GetVmConfig()
-	case BufferTypeCallData:
-		return im.GetFuncCallData()
 	default:
 		return im.GetCustomBuffer(bufferType)
 	}

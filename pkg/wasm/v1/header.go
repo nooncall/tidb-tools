@@ -29,18 +29,6 @@ func GetMap(instance common.WasmInstance, mapType MapType) common.HeaderMap {
 		return ctx.GetHttpRequestHeader()
 	case MapTypeHttpRequestTrailers:
 		return ctx.GetHttpRequestTrailer()
-	case MapTypeHttpResponseHeaders:
-		return ctx.GetHttpResponseHeader()
-	case MapTypeHttpResponseTrailers:
-		return ctx.GetHttpResponseTrailer()
-	case MapTypeGrpcReceiveInitialMetadata:
-		return ctx.GetGrpcReceiveInitialMetaData()
-	case MapTypeGrpcReceiveTrailingMetadata:
-		return ctx.GetGrpcReceiveTrailerMetaData()
-	case MapTypeHttpCallResponseHeaders:
-		return ctx.GetHttpCallResponseHeaders()
-	case MapTypeHttpCallResponseTrailers:
-		return ctx.GetHttpCallResponseTrailer()
 	default:
 		return ctx.GetCustomHeader(mapType)
 	}
